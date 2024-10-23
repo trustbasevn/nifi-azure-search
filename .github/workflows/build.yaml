@@ -24,6 +24,13 @@ jobs:
         java-version: 21
         distribution: 'adopt'
 
+    - name: Install Maven 3.9.2
+      run: |
+        MVN_VERSION="3.9.2"
+        curl -sSL https://archive.apache.org/dist/maven/maven-${MVN_VERSION}/binaries/apache-maven-${MVN_VERSION}-bin.tar.gz -o /tmp/maven.tar.gz
+        tar -zxvf /tmp/maven.tar.gz -C /tmp
+        export PATH=/tmp/apache-maven-${MVN_VERSION}/bin:$PATH
+
     - name: Build with Maven
       run: mvn -B clean package
 

@@ -29,7 +29,7 @@ jobs:
         MVN_VERSION="3.9.9"
         curl -sSL https://dlcdn.apache.org/maven/maven-3/${MVN_VERSION}/binaries/apache-maven-${MVN_VERSION}-bin.tar.gz -o /tmp/maven.tar.gz
         tar -zxvf /tmp/maven.tar.gz -C /tmp
-        export PATH=/tmp/apache-maven-${MVN_VERSION}/bin:$PATH
+        export "PATH=/tmp/apache-maven-${MVN_VERSION}/bin:$PATH" >> $GITHUB_ENV
 
     - name: Build with Maven
       run: mvn -B clean package

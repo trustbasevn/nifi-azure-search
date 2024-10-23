@@ -1,0 +1,14 @@
+*/target/*
+.idea/
+.project
+.settings
+.classpath
+.DS_Store
+.metadata
+.recommender
+
+*.versionsBackup
+
+*.nar
+.idea
+*.iml

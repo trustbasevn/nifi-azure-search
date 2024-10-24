@@ -37,6 +37,10 @@
     <modules>
         <module>nifi-azure-search-processors</module>
         <module>nifi-azure-search-nar</module>
+        <module>nifi-azure-search-client-service</module>
+        <module>nifi-azure-search-client-service-api</module>
+        <module>nifi-azure-search-client-service-api-nar</module>
+        <module>nifi-azure-search-client-service-nar</module>
     </modules>
     <build>
         <plugins>

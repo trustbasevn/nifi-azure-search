@@ -16,6 +16,10 @@
  */
 package org.apache.nifi.processors.azure.search;
 
+import org.apache.nifi.annotation.behavior.InputRequirement;
+import org.apache.nifi.annotation.behavior.SystemResource;
+import org.apache.nifi.annotation.behavior.SystemResourceConsideration;
+import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
 import org.apache.nifi.annotation.behavior.ReadsAttribute;
@@ -33,49 +37,65 @@ import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
 
+import org.apache.nifi.serialization.RecordReaderFactory;
+
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Stream;
 
-@Tags({"example"})
-@CapabilityDescription("Provide a description")
-@SeeAlso({})
-@ReadsAttributes({@ReadsAttribute(attribute="", description="")})
-@WritesAttributes({@WritesAttribute(attribute="", description="")})
-public class PutAzureSearchRecord extends AbstractProcessor {
+@Tags({"azure", "cosmos", "insert", "record", "put"})
+@InputRequirement(InputRequirement.Requirement.INPUT_REQUIRED)
+@CapabilityDescription("This processor is a record-aware processor for inserting data into Cosmos DB with Core SQL API. It uses a configured record reader and " +
+        "schema to read an incoming record set from the body of a Flowfile and then inserts those records into " +
+        "a configured Cosmos DB Container.")
+@SystemResourceConsideration(resource = SystemResource.MEMORY)
+public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
 
-    public static final PropertyDescriptor MY_PROPERTY = new PropertyDescriptor
-            .Builder()
-            .name("My Property")
-            .displayName("My Property")
-            .description("Example Property")
+    private String conflictHandlingStrategy;
+    static final AllowableValue IGNORE_CONFLICT = new AllowableValue("IGNORE", "Ignore", "Conflicting records will not be inserted, and FlowFile will not be routed to failure");
+    static final AllowableValue UPSERT_CONFLICT = new AllowableValue("UPSERT", "Upsert", "Conflicting records will be upserted, and FlowFile will not be routed to failure");
+
+    static final PropertyDescriptor RECORD_READER_FACTORY = new PropertyDescriptor.Builder()
+            .name("record-reader")
+            .displayName("Record Reader")
+            .description("Specifies the Controller Service to use for parsing incoming data and determining the data's schema")
+            .identifiesControllerService(RecordReaderFactory.class)
             .required(true)
-            .addValidator(StandardValidators.NON_EMPTY_VALIDATOR)
             .build();
 
-    public static final Relationship REL_SUCCESS = new Relationship.Builder()
-            .name("success")
-            .description("Example success relationship")
+    static final PropertyDescriptor INSERT_BATCH_SIZE = new PropertyDescriptor.Builder()
+            .name("insert-batch-size")
+            .displayName("Insert Batch Size")
+            .description("The number of records to group together for one single insert operation against Cosmos DB")
+            .defaultValue("20")
+            .required(false)
+            .addValidator(StandardValidators.POSITIVE_INTEGER_VALIDATOR)
             .build();
 
-    private List<PropertyDescriptor> descriptors;
+    static final PropertyDescriptor CONFLICT_HANDLE_STRATEGY = new PropertyDescriptor.Builder()
+            .name("azure-cosmos-db-conflict-handling-strategy")
+            .displayName("Cosmos DB Conflict Handling Strategy")
+            .description("Choose whether to ignore or upsert when conflict error occurs during insertion")
+            .required(false)
+            .allowableValues(IGNORE_CONFLICT, UPSERT_CONFLICT)
+            .defaultValue(IGNORE_CONFLICT)
+            .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
+            .build();
 
-    private Set<Relationship> relationships;
-
-    @Override
-    protected void init(final ProcessorInitializationContext context) {
-        descriptors = List.of(MY_PROPERTY);
-
-        relationships = Set.of(REL_SUCCESS);
-    }
+    private final static Set<Relationship> relationships = Set.of(REL_SUCCESS, REL_FAILURE);
+    private final static List<PropertyDescriptor> propertyDescriptors = Stream.concat(
+            descriptors.stream(),
+            Stream.of(RECORD_READER_FACTORY, INSERT_BATCH_SIZE, CONFLICT_HANDLE_STRATEGY)
+    ).toList();
 
     @Override
     public Set<Relationship> getRelationships() {
-        return this.relationships;
+        return relationships;
     }
 
     @Override
-    public final List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return descriptors;
+    public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+        return propertyDescriptors;
     }
 
     @OnScheduled

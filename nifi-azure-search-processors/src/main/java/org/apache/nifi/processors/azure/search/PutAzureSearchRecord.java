@@ -16,30 +16,36 @@
  */
 package org.apache.nifi.processors.azure.search;
 
+import com.azure.search.documents.SearchClient;
+import com.azure.search.documents.indexes.models.IndexDocumentsBatch;
+import com.azure.search.documents.models.IndexBatchException;
+import com.azure.search.documents.models.IndexDocumentsResult;
 import org.apache.nifi.annotation.behavior.InputRequirement;
 import org.apache.nifi.annotation.behavior.SystemResource;
 import org.apache.nifi.annotation.behavior.SystemResourceConsideration;
 import org.apache.nifi.components.AllowableValue;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.flowfile.FlowFile;
-import org.apache.nifi.annotation.behavior.ReadsAttribute;
-import org.apache.nifi.annotation.behavior.ReadsAttributes;
-import org.apache.nifi.annotation.behavior.WritesAttribute;
-import org.apache.nifi.annotation.behavior.WritesAttributes;
 import org.apache.nifi.annotation.lifecycle.OnScheduled;
 import org.apache.nifi.annotation.documentation.CapabilityDescription;
-import org.apache.nifi.annotation.documentation.SeeAlso;
 import org.apache.nifi.annotation.documentation.Tags;
-import org.apache.nifi.processor.AbstractProcessor;
+import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.ProcessContext;
 import org.apache.nifi.processor.ProcessSession;
-import org.apache.nifi.processor.ProcessorInitializationContext;
 import org.apache.nifi.processor.Relationship;
 import org.apache.nifi.processor.util.StandardValidators;
 
+import org.apache.nifi.serialization.RecordReader;
 import org.apache.nifi.serialization.RecordReaderFactory;
+import org.apache.nifi.serialization.record.Record;
+import org.apache.nifi.serialization.record.RecordFieldType;
+import org.apache.nifi.serialization.record.RecordSchema;
+import org.apache.nifi.serialization.record.util.DataTypeUtils;
 
+import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -55,7 +61,7 @@ public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
     static final AllowableValue IGNORE_CONFLICT = new AllowableValue("IGNORE", "Ignore", "Conflicting records will not be inserted, and FlowFile will not be routed to failure");
     static final AllowableValue UPSERT_CONFLICT = new AllowableValue("UPSERT", "Upsert", "Conflicting records will be upserted, and FlowFile will not be routed to failure");
 
-    static final PropertyDescriptor RECORD_READER_FACTORY = new PropertyDescriptor.Builder()
+    static final PropertyDescriptor RECORD_READER = new PropertyDescriptor.Builder()
             .name("record-reader")
             .displayName("Record Reader")
             .description("Specifies the Controller Service to use for parsing incoming data and determining the data's schema")
@@ -85,7 +91,7 @@ public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
     private final static Set<Relationship> relationships = Set.of(REL_SUCCESS, REL_FAILURE);
     private final static List<PropertyDescriptor> propertyDescriptors = Stream.concat(
             descriptors.stream(),
-            Stream.of(RECORD_READER_FACTORY, INSERT_BATCH_SIZE, CONFLICT_HANDLE_STRATEGY)
+            Stream.of(RECORD_READER, INSERT_BATCH_SIZE, CONFLICT_HANDLE_STRATEGY)
     ).toList();
 
     @Override
@@ -98,9 +104,20 @@ public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
         return propertyDescriptors;
     }
 
-    @OnScheduled
-    public void onScheduled(final ProcessContext context) {
+    protected void bulkInsert(final List<Map<String, Object>> records) throws IndexBatchException {
+        // In the future, this method will be replaced by calling createItems API
+        // for example, this.container.createItems(records);
+        // currently, no createItems API available in Azure Cosmos Java SDK
+        final ComponentLog logger = getLogger();
+        final SearchClient searchClient = getSearchClient();
 
+        IndexDocumentsBatch<Map<String, Object>> batch = new IndexDocumentsBatch<Map<String, Object>>()
+                .addUploadActions(records);
+        try {
+            IndexDocumentsResult result = searchClient.indexDocuments(batch);
+        } catch (IndexBatchException e) {
+            logger.error("Index batch failed with error {}", e.getIndexingResults(), e);
+        }
     }
 
     @Override
@@ -109,7 +126,40 @@ public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
         if (flowFile == null) {
             return;
         }
-        // TODO implement
+        final ComponentLog logger = getLogger();
+        final RecordReaderFactory recordReaderFactory = context.getProperty(RECORD_READER)
+                .asControllerService(RecordReaderFactory.class);
+        List<Map<String, Object>> batch = new ArrayList<>();
+        int ceiling = context.getProperty(INSERT_BATCH_SIZE).asInteger();
+        boolean error = false;
+        try (final InputStream inStream = session.read(flowFile);
+             final RecordReader reader = recordReaderFactory.createRecordReader(flowFile, inStream, logger)) {
+            RecordSchema schema = reader.getSchema();
+            Record record;
+            while ((record = reader.nextRecord()) != null) {
+
+                Map<String, Object> contentMap = (Map<String, Object>) DataTypeUtils.convertRecordFieldtoObject(record, RecordFieldType.RECORD.getRecordDataType(schema));
+                batch.add(contentMap);
+                if (batch.size() >= ceiling) {
+                    bulkInsert(batch);
+                    batch = new ArrayList<>();
+                }
+            }
+            if (!error && batch.size() > 0) {
+                bulkInsert(batch);
+            }
+        } catch (Exception e) {
+            logger.error("PutAzureSearchRecord failed with error {}", e.getMessage(), e);
+            error = true;
+        } finally {
+            if (!error) {
+                session.getProvenanceReporter().send(flowFile, getURI(context));
+                session.transfer(flowFile, REL_SUCCESS);
+            } else {
+                session.transfer(flowFile, REL_FAILURE);
+            }
+
+        }
 
         session.transfer(flowFile, REL_SUCCESS);
     }

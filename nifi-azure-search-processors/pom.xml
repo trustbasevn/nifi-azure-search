@@ -89,5 +89,9 @@
             <version>2.0.0-M4</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>com.azure</groupId>
+            <artifactId>azure-search-documents</artifactId>
+        </dependency>
     </dependencies>
 </project>

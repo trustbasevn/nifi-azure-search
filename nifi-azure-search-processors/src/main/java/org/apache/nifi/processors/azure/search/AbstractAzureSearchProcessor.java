@@ -27,8 +27,8 @@ public abstract class AbstractAzureSearchProcessor extends AbstractProcessor {
             .build();
 
     static final PropertyDescriptor CONNECTION_SERVICE = new PropertyDescriptor.Builder()
-            .name("azure-cosmos-db-connection-service")
-            .displayName("Cosmos DB Connection Service")
+            .name("azure-search-connection-service")
+            .displayName("Azure Search Connection Service")
             .description("If configured, the controller service used to obtain the connection string and access key")
             .required(false)
             .identifiesControllerService(AzureSearchConnectionService.class)
@@ -48,7 +48,6 @@ public abstract class AbstractAzureSearchProcessor extends AbstractProcessor {
             this.connectionService = context.getProperty(CONNECTION_SERVICE).asControllerService(AzureSearchConnectionService.class);
             this.searchClient = this.connectionService.getSearchClient();
         }
-
     }
 
     @OnStopped
@@ -74,7 +73,7 @@ public abstract class AbstractAzureSearchProcessor extends AbstractProcessor {
         return this.connectionService.getIndexName();
     }
 
-    protected SearchClient getSearchClient(final ProcessContext context) {
+    protected SearchClient getSearchClient() {
         return searchClient;
     }
 }

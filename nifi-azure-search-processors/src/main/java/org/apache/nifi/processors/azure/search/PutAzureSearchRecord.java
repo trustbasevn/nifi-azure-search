@@ -175,9 +175,6 @@ public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
             } else {
                 session.transfer(flowFile, REL_FAILURE);
             }
-
         }
-
-        session.transfer(flowFile, REL_SUCCESS);
     }
 }

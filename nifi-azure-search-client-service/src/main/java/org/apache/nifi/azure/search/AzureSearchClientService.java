@@ -62,9 +62,9 @@ public class AzureSearchClientService extends AbstractControllerService implemen
             .build();
 
     public static final PropertyDescriptor INDEX_NAME = new PropertyDescriptor.Builder()
-            .name("azure-ai-search-access-key")
-            .displayName("Azure AI Search Access Key")
-            .description("Azure AI Search Access Key from Azure Portal (Settings->Keys). "
+            .name("azure-ai-search-index-name")
+            .displayName("Azure AI Search Index Name")
+            .description("Azure AI Search Index Name from Azure Portal (Settings->Keys). "
                     + "Choose a read-write key to enable database or container creation at run time")
             .required(true)
             .addValidator(StandardValidators.NON_BLANK_VALIDATOR)

@@ -7,36 +7,62 @@ import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.logging.ComponentLog;
 import org.apache.nifi.processor.AbstractProcessor;
 import org.apache.nifi.processor.ProcessContext;
-import org.apache.nifi.processor.ProcessSession;
 import org.apache.nifi.processor.Relationship;
-import org.apache.nifi.processor.exception.ProcessException;
 
 import org.apache.nifi.azure.search.AzureSearchConnectionService;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public abstract class AbstractAzureSearchProcessor extends AbstractProcessor {
-    static final Relationship REL_SUCCESS = new Relationship.Builder()
+    public static final Relationship REL_SUCCESS = new Relationship.Builder()
             .name("success")
             .description("Example success relationship")
             .build();
 
-    static final Relationship REL_FAILURE = new Relationship.Builder()
+    public static final Relationship REL_FAILURE = new Relationship.Builder()
             .name("failure")
             .description("Example success relationship")
             .build();
 
-    static final PropertyDescriptor CONNECTION_SERVICE = new PropertyDescriptor.Builder()
-            .name("azure-search-connection-service")
+    public static final PropertyDescriptor SEARCH_CONNECTION_SERVICE = new PropertyDescriptor.Builder()
+            .name("SEARCH_CONNECTION_SERVICE")
             .displayName("Azure Search Connection Service")
             .description("If configured, the controller service used to obtain the connection string and access key")
-            .required(false)
+            .required(true)
             .identifiesControllerService(AzureSearchConnectionService.class)
             .build();
 
-    static final List<PropertyDescriptor> descriptors = List.of(
-            CONNECTION_SERVICE
-    );
+    protected static final List<PropertyDescriptor> PROPERTIES;
+    protected static final Set<Relationship> RELATIONSHIPS;
+
+    static {
+        List<PropertyDescriptor> descriptorList = new ArrayList<>();
+        descriptorList.add(SEARCH_CONNECTION_SERVICE);
+
+        PROPERTIES = Collections.unmodifiableList(descriptorList);
+
+        Set<Relationship> relationshipSet = new HashSet<>();
+        relationshipSet.add(REL_SUCCESS);
+        relationshipSet.add(REL_FAILURE);
+        RELATIONSHIPS = Collections.unmodifiableSet(relationshipSet);
+    }
+
+    @Override
+    public Set<Relationship> getRelationships() {
+        return RELATIONSHIPS;
+    }
+
+    @Override
+    protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+        return PROPERTIES;
+    }
+//    static final List<PropertyDescriptor> descriptors = List.of(
+//            SEARCH_CONNECTION_SERVICE
+//    );
 
     private SearchClient searchClient;
     private AzureSearchConnectionService connectionService;
@@ -44,8 +70,8 @@ public abstract class AbstractAzureSearchProcessor extends AbstractProcessor {
     @OnScheduled
     public void onScheduled(final ProcessContext context) {
         final ComponentLog logger = getLogger();
-        if (context.getProperty(CONNECTION_SERVICE).isSet()) {
-            this.connectionService = context.getProperty(CONNECTION_SERVICE).asControllerService(AzureSearchConnectionService.class);
+        if (context.getProperty(SEARCH_CONNECTION_SERVICE).isSet()) {
+            this.connectionService = context.getProperty(SEARCH_CONNECTION_SERVICE).asControllerService(AzureSearchConnectionService.class);
             this.searchClient = this.connectionService.getSearchClient();
         }
     }

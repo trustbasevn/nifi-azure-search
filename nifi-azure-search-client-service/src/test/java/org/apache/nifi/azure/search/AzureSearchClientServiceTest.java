@@ -32,12 +32,12 @@ public class AzureSearchClientServiceTest {
     @Test
     public void testService() throws InitializationException {
         final TestRunner runner = TestRunners.newTestRunner(TestProcessor.class);
-        final AzureSearchClientService service = new AzureSearchClientService();
+        final StandardAzureSearchConnectionService service = new StandardAzureSearchConnectionService();
         runner.addControllerService("test-good", service);
 
-        runner.setProperty(service, AzureSearchClientService.URI, "https://abc.serch.windows.net");
-        runner.setProperty(service, AzureSearchClientService.SEARCH_ACCESS_KEY, "Q29weSBkYXRhIHdpbGwgc2V0IHlvdSBmcmVl");
-        runner.setProperty(service, AzureSearchClientService.INDEX_NAME, "test-index");
+        runner.setProperty(service, StandardAzureSearchConnectionService.URI, "https://abc.serch.windows.net");
+        runner.setProperty(service, StandardAzureSearchConnectionService.SEARCH_ACCESS_KEY, "Q29weSBkYXRhIHdpbGwgc2V0IHlvdSBmcmVl");
+        runner.setProperty(service, StandardAzureSearchConnectionService.INDEX_NAME, "test-index");
         runner.enableControllerService(service);
 
         runner.assertValid(service);

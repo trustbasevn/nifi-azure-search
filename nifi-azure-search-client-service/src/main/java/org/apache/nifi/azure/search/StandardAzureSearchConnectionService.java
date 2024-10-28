@@ -24,6 +24,7 @@ import org.apache.nifi.annotation.documentation.CapabilityDescription;
 import org.apache.nifi.annotation.documentation.Tags;
 import org.apache.nifi.annotation.lifecycle.OnDisabled;
 import org.apache.nifi.annotation.lifecycle.OnEnabled;
+import org.apache.nifi.annotation.lifecycle.OnShutdown;
 import org.apache.nifi.components.PropertyDescriptor;
 import org.apache.nifi.controller.AbstractControllerService;
 import org.apache.nifi.controller.ConfigurationContext;
@@ -32,9 +33,9 @@ import org.apache.nifi.reporting.InitializationException;
 
 import com.azure.search.documents.SearchClient;
 
-@Tags({ "example"})
+@Tags({ "azure", "search"})
 @CapabilityDescription("Example ControllerService implementation of MyService.")
-public class AzureSearchClientService extends AbstractControllerService implements AzureSearchConnectionService {
+public class StandardAzureSearchConnectionService extends AbstractControllerService implements AzureSearchConnectionService {
     private String uri;
     private String accessKey;
     private String indexName;
@@ -96,6 +97,7 @@ public class AzureSearchClientService extends AbstractControllerService implemen
         createSearchClient(uri, accessKey, indexName);
     }
 
+    @OnShutdown
     @OnDisabled
     public void shutdown() {
         this.searchClient = null;

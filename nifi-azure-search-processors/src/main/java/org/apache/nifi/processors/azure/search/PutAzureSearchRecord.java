@@ -44,6 +44,7 @@ import org.apache.nifi.serialization.record.util.DataTypeUtils;
 
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -88,21 +89,37 @@ public class PutAzureSearchRecord extends AbstractAzureSearchProcessor {
             .addValidator(StandardValidators.NON_BLANK_VALIDATOR)
             .build();
 
-    private final static Set<Relationship> relationships = Set.of(REL_SUCCESS, REL_FAILURE);
-    private final static List<PropertyDescriptor> propertyDescriptors = Stream.concat(
-            descriptors.stream(),
-            Stream.of(RECORD_READER, INSERT_BATCH_SIZE, CONFLICT_HANDLE_STRATEGY)
-    ).toList();
+    private static final List<PropertyDescriptor> PROPERTIES;
 
-    @Override
-    public Set<Relationship> getRelationships() {
-        return relationships;
+    static {
+        final List<PropertyDescriptor> properties = new ArrayList<>();
+        properties.add(RECORD_READER);
+        properties.add(INSERT_BATCH_SIZE);
+        properties.add(CONFLICT_HANDLE_STRATEGY);
+        properties.addAll(AbstractAzureSearchProcessor.PROPERTIES);
+        PROPERTIES = Collections.unmodifiableList(properties);
     }
 
     @Override
-    public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
-        return propertyDescriptors;
+    protected List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+        return PROPERTIES;
     }
+
+    //    private final static Set<Relationship> relationships = Set.of(REL_SUCCESS, REL_FAILURE);
+    //    private final static List<PropertyDescriptor> propertyDescriptors = Stream.concat(
+    //            descriptors.stream(),
+    //            Stream.of(RECORD_READER, INSERT_BATCH_SIZE, CONFLICT_HANDLE_STRATEGY)
+    //    ).toList();
+    //
+    //    @Override
+    //    public Set<Relationship> getRelationships() {
+    //        return relationships;
+    //    }
+    //
+    //    @Override
+    //    public List<PropertyDescriptor> getSupportedPropertyDescriptors() {
+    //        return propertyDescriptors;
+    //    }
 
     protected void bulkInsert(final List<Map<String, Object>> records) throws IndexBatchException {
         // In the future, this method will be replaced by calling createItems API

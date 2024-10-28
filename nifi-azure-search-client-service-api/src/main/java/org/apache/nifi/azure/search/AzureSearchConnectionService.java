@@ -22,7 +22,7 @@ import org.apache.nifi.controller.ControllerService;
 
 import com.azure.search.documents.SearchClient;
 
-@Tags({"example"})
+@Tags({"azure", "search"})
 @CapabilityDescription("Example Service API.")
 public interface AzureSearchConnectionService extends ControllerService {
 
